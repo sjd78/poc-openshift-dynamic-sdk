@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig-bases/app-react-esm.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "dist",
+    "paths": {
+      "_/*": ["src/*"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

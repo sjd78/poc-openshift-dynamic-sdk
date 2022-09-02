@@ -1,0 +1,14 @@
+{
+  "name": "core-to-console",
+  "version": "0.0.1",
+  "displayName": "POC @openshift/dynamic-plugin-sdk based plugin",
+  "description": "POC @openshift/dynamic-plugin-sdk based plugin deployed to a running in OCP console",
+
+  "dependencies": {
+    "@console/pluginAPI": "*"
+  },
+
+  "exposedModules": {
+    "ExamplePage": "./src/components/ExamplePage"
+  }
+}
