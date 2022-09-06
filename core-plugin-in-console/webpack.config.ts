@@ -18,6 +18,13 @@ interface Configuration extends WebpackConfiguration {
   devServer?: WebpackDevServerConfiguration;
 }
 
+function buildPluginId(): string {
+  const pluginName: string = 'core-to-console';
+  const pluginVersion: string = '0.0.1';
+
+  return `${pluginName}@${pluginVersion}`;
+}
+
 /**
  * Shared modules consumed and/or provided by this plugin.
  *
@@ -66,7 +73,8 @@ const plugins: WebpackPluginInstance[] = [
     //       The default function used does not work with console container
     //       openshift/origin-console:latest (2-Sept-2022).
     entryCallbackSettings: {
-      name: 'window.loadPluginEntry'
+      name: 'window.loadPluginEntry',
+      pluginID: buildPluginId(),
     },
   }),
 ];
