@@ -53,9 +53,7 @@ const plugins: WebpackPluginInstance[] = [
     //       it is stripped out by the manifest generator.
     pluginMetadata: 'plugin.json',
 
-    // Extensions come from `plugin-extensions.ts`, and are type limited to
-    // "core.*/*".  These do not have providers in console container
-    // openshift/origin-console:latest (2-Sept-2022).
+    // TODO: See `plugin-extensions.ts` for details.
     extensions,
 
     // TODO: Assume this would need to be aligned with how console handles its
