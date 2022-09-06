@@ -28,20 +28,33 @@ function buildPluginId(): string {
 /**
  * Shared modules consumed and/or provided by this plugin.
  *
- * A host application typically provides some modules to its plugins. If an application
- * provided module is configured as an eager singleton, we suggest using `import: false`
- * to avoid bundling a fallback version of the module when building your plugin.
+ * This list has be adapted from:
+ *   - https://github.com/openshift/console/blob/master/frontend/packages/console-dynamic-plugin-sdk/src/shared-modules.ts#L40-L60
+ *   - https://github.com/openshift/console/blob/master/frontend/packages/console-dynamic-plugin-sdk/src/webpack/ConsoleRemotePlugin.ts#L88-L108
  *
- * Plugins may provide additional shared modules that can be consumed by other plugins.
+ * TODO: Keep aligned with how console handles its modules.  Currently console
+ * TODO: hard codes it in `shared-modules.ts` referenced above.
  *
  * @see https://webpack.js.org/plugins/module-federation-plugin/#sharing-hints
  */
 const pluginSharedModules: WebpackSharedObject = {
+  // Use the core SDK as the base instead of the console's SDK
   '@openshift/dynamic-plugin-sdk': { singleton: true, import: false },
-  '@patternfly/react-core': {},
-  '@patternfly/react-table': {},
+  // '@openshift-console/dynamic-plugin-sdk': { singleton: true },
+  // '@openshift-console/dynamic-plugin-sdk-internal': { singleton: true },
+
+  // non-SDK modules:
+  '@patternfly/react-core': { singleton: true, import: false },
+  '@patternfly/react-table': { singleton: true, import: false },
+  '@patternfly/quickstarts': { singleton: true, import: false },
   react: { singleton: true, import: false },
-  'react-dom': { singleton: true, import: false },
+  'react-helmet': { singleton: false },
+  'react-i18next': { singleton: true, import: false },
+  'react-router': { singleton: true, import: false },
+  'react-router-dom': { singleton: true, import: false },
+  'react-redux': { singleton: true, import: false },
+  redux: { singleton: true, import: false },
+  'redux-thunk': { singleton: true, import: false },
 };
 
 const plugins: WebpackPluginInstance[] = [
@@ -63,9 +76,6 @@ const plugins: WebpackPluginInstance[] = [
     // TODO: See `plugin-extensions.ts` for details.
     extensions,
 
-    // TODO: Assume this would need to be aligned with how console handles its
-    //       modules.  I'm guessing that it would need to mirror whatever handles
-    //       the plugin.json->dependencies configs.
     sharedModules: pluginSharedModules,
 
     // TODO: With a manually patched `plugin-manifets.json` to provide all console
