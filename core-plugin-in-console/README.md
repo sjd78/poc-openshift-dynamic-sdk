@@ -1,44 +1,65 @@
 # Sample plugin
 
-This is a blend of:
+This project is a blend of:
   - https://github.com/openshift/dynamic-plugin-sdk/blob/main/packages/sample-plugin
   - https://github.com/spadgett/console-plugin-template
 
 
 ## Development
 
-### Option 1: Plugin static dev build, Console running from container
+Basic setup is to run a http server for the plugin assets and to run openshift console
+via a container.  The container runs console and is configured to load the plugin as
+a dynamin plugin.
 
-In one terminal window, build and server the plugin:
+### Running the plugin
 
-1. `yarn install`
-2. `yarn build`
-3. `yarn http-server`
+#### Option 1: Plugin static dev build
 
-In another terminal window, login to an OCP cluster and run console from a container:
+In one terminal window, build and serve the plugin:
+```sh
+  yarn install
+  yarn build:dev
+  yarn http-server
+```
 
-1. `oc login` (requires [oc](https://console.redhat.com/openshift/downloads) and an [OpenShift cluster](https://console.redhat.com/openshift/create))
-2. `yarn start:console` (requires [Docker](https://www.docker.com) or [podman 3.2.0+](https://podman.io))
+#### Options 2: Plugin dynamically via webpack-dev-server
+
+With automated patching of configurations, manifests and generated output, the
+plugin can be run from the webpack dev server.  In one terminal window, build
+and serve the plugin:
+```sh
+  yarn install
+  yarn start
+```
+
+
+### Running the OCP console
+
+In another terminal window, login to an OCP cluster and run console from a container.
+This requires:
+  - The [oc](https://console.redhat.com/openshift/downloads) command
+  - An [OpenShift cluster](https://console.redhat.com/openshift/create)
+    ([OpenShift Local / CRC](https://access.redhat.com/documentation/en-us/red_hat_openshift_local/2.5/html/getting_started_guide/introducing_gsg)
+    is an easy option for a development)
+  - A container engine, [Docker](https://www.docker.com) or [podman 3.2.0+](https://podman.io)
+
+Using `crc`:
+```sh
+  crc start
+  crc console --credentials
+  eval $(crc oc-env)
+  oc login # using the kubeadmin credentails given above
+  yarn start:console
+```
+
+Using any other `oc`:
+```sh
+  oc login # to your openshift cluster
+  yarn start:console
+```
 
 This will run the OpenShift console in a container connected to the cluster
 you've logged into. The plugin HTTP server runs on port 9001 with CORS enabled.
+
 Navigate to <http://localhost:9000/example> to see the running plugin.
 
-## ...review if still needed or relevant
-
-The docs below are copied from https://github.com/openshift/dynamic-plugin-sdk/blob/main/packages/sample-plugin/README.md.  They may be useful in future, but I'm not sure on that.
-
-### Docker config
-
-There's docker config with caddy server for easier build and run of the plugin. The Caddy config utilizes two environment variables
-
-* `PLUGIN_URL` - (*defaults to `/`*) defines which URL should be used when pulling assets, **example** `PLUGIN_URL=/foo/bar` will serve the assets on `localhost:8000/foo/bar`
-* `FALLBACK_URL` - (*defaults to `/`*) if the file is not found caddy will use this URL as a fallback and will look for index.html (SPA behavior) **example** `FALLBACK_URL=/baz` will serve the index.html from `/baz` folder.
-
-#### Running with docker
-
-The caddy server is by default serving content over from port `8000` in order to see it locally you'll have to map your machine's port to caddy's port
-
-```bash
-> docker run -p 80:8000 sample-plugin
-```
