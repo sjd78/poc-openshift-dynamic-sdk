@@ -83,19 +83,19 @@ const plugins: WebpackPluginInstance[] = [
         // TODO: See above for details about the shared modules.
         sharedModules: pluginSharedModules,
 
-        // TODO: These configs are requried to attempt to load the plugin in console.
-        //       The default function used does not work with console container
-        //       openshift/origin-console:latest (2-Sept-2022).
+        // TODO: Setup callbacks names for the generated `plugin-entry.js` to function with
+        //       the current console runtime openshift/origin-console:latest (as of 7-Sep-2022).
         entryCallbackSettings: {
           name: 'window.loadPluginEntry',
           pluginID: buildPluginId(),
         },
       }).apply(compiler);
 
-      // The core SDK generated manifest needs to be patched for the plugin to load
-      // via the console SDK.  Additional manifest information is required.
 
-      // Patch Manifest
+      // Patch Manifest --
+      //   The core SDK generated manifest needs to be patched for the plugin to load
+      //   via the console SDK.  Additional manifest information is required and will
+      //   be patched in after the manifest has been generated.
       compiler.hooks.thisCompilation.tap('PatchManifestJson', (compilation) => {
         compilation.hooks.processAssets.tap(
           {
