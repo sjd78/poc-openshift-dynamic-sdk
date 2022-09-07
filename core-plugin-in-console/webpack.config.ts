@@ -1,8 +1,10 @@
 import path from 'path';
+import fs from 'fs';
+
 import { DynamicRemotePlugin } from '@openshift/dynamic-plugin-sdk-webpack';
 import CSSMinimizerPlugin from 'css-minimizer-webpack-plugin';
 import { TsconfigPathsPlugin } from 'tsconfig-paths-webpack-plugin';
-import { EnvironmentPlugin } from 'webpack';
+import { EnvironmentPlugin, Compiler, Compilation, sources } from 'webpack';
 import extensions from './plugin-extensions';
 
 import type { WebpackSharedObject } from '@openshift/dynamic-plugin-sdk-webpack';
@@ -10,17 +12,22 @@ import type { WebpackPluginInstance } from 'webpack';
 import type { Configuration as WebpackConfiguration } from "webpack";
 import type { Configuration as WebpackDevServerConfiguration } from "webpack-dev-server";
 
-const isProd = process.env.NODE_ENV === 'production';
-
-const pathTo = (relativePath: string) => path.resolve(__dirname, relativePath);
-
 interface Configuration extends WebpackConfiguration {
   devServer?: WebpackDevServerConfiguration;
 }
 
+const isProd = process.env.NODE_ENV === 'production';
+
+const pathTo = (relativePath: string) => path.resolve(__dirname, relativePath);
+
+const parseJSONFile = <TValue = unknown>(filePath: string) =>
+  JSON.parse(fs.readFileSync(filePath, 'utf-8')) as TValue;
+
+const pluginJson: any = parseJSONFile('plugin.json');
+
 function buildPluginId(): string {
-  const pluginName: string = 'core-to-console';
-  const pluginVersion: string = '0.0.1';
+  const pluginName: string = pluginJson.name;
+  const pluginVersion: string = pluginJson.version;
 
   return `${pluginName}@${pluginVersion}`;
 }
@@ -62,31 +69,58 @@ const plugins: WebpackPluginInstance[] = [
     NODE_ENV: 'development',
   }),
 
-  // This plugin also generates the `plugin-manifest.json` file
-  new DynamicRemotePlugin({
-    // NOTE: The plugin only works with `plugin.json` keys:
-    //         - name
-    //         - version
-    //         - exposedModules
-    //
-    // TODO: Console requires a key `dependencies`.  Even if it is in `plugin.json`
-    //       it is stripped out by the manifest generator.
-    pluginMetadata: 'plugin.json',
+  // Wrap the core SDK plugin so the output can be patched as necessary to run in console
+  new (class PatchedDynamicRemotePlugin {
+    apply(compiler: Compiler) {
+      // do the federated module builds plus generates the `plugin-manifest.json` file
+      new DynamicRemotePlugin({
+        // TODO: See 'Patch Manifest' below for details.
+        pluginMetadata: 'plugin.json',
 
-    // TODO: See `plugin-extensions.ts` for details.
-    extensions,
+        // TODO: See `plugin-extensions.ts` for details.
+        extensions,
 
-    sharedModules: pluginSharedModules,
+        // TODO: See above for details about the shared modules.
+        sharedModules: pluginSharedModules,
 
-    // TODO: With a manually patched `plugin-manifets.json` to provide all console
-    //       required fields, this config requried to attempt to load the plugin.
-    //       The default function used does not work with console container
-    //       openshift/origin-console:latest (2-Sept-2022).
-    entryCallbackSettings: {
-      name: 'window.loadPluginEntry',
-      pluginID: buildPluginId(),
-    },
-  }),
+        // TODO: These configs are requried to attempt to load the plugin in console.
+        //       The default function used does not work with console container
+        //       openshift/origin-console:latest (2-Sept-2022).
+        entryCallbackSettings: {
+          name: 'window.loadPluginEntry',
+          pluginID: buildPluginId(),
+        },
+      }).apply(compiler);
+
+      // The core SDK generated manifest needs to be patched for the plugin to load
+      // via the console SDK.  Additional manifest information is required.
+
+      // Patch Manifest
+      compiler.hooks.thisCompilation.tap('PatchManifestJson', (compilation) => {
+        compilation.hooks.processAssets.tap(
+          {
+            name: 'PatchManifestJson',
+            stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONS,
+          },
+          (assets) => {
+            const existing = JSON.parse(assets['plugin-manifest.json'].source().toString());
+
+            // TODO: Review what needs to be patched in to `DynamicRemotePlugin` generated output.
+            const patched = {
+              name: existing.name ?? pluginJson.name,
+              version: existing.version ?? pluginJson.version,
+              displayName: existing.displayName ?? pluginJson.displayName,
+              description: existing.description ?? pluginJson.description,
+              dependencies: existing.dependencies ?? pluginJson.dependencies,
+              extensions: existing.extensions ?? pluginJson.extensions,
+            };
+
+            assets['plugin-manifest.json']
+              = new sources.RawSource(JSON.stringify(patched, undefined, 2));
+          })
+      });
+    }
+  })(),
 ];
 
 const devServer: WebpackDevServerConfiguration = {
